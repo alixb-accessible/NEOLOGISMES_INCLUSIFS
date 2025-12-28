@@ -1,571 +1,264 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Play, RotateCw, Volume2, VolumeX, Star } from 'lucide-react';
-
-const NeologismSlotMachine = () => {
-  const [spinning, setSpinning] = useState(false);
-  const [result, setResult] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [reelOffsets, setReelOffsets] = useState([0, 0, 0]);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [modeManuel, setModeManuel] = useState(false);
-  const [racine1Selectionnee, setRacine1Selectionnee] = useState(null);
-  const [racine2Selectionnee, setRacine2Selectionnee] = useState(null);
-  const [suffixeSelectionne, setSuffixeSelectionne] = useState(null);
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Machine à Néologismes</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes pulse-twice { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .pulse-twice { animation: pulse-twice 0.5s 2; }
+  </style>
+</head>
+<body class="min-h-screen p-6" style="background: linear-gradient(135deg, #4a4a4a 0%, #4a4a4a 14.28%, #22c55e 14.28%, #22c55e 28.56%, #3b82f6 28.56%, #3b82f6 42.84%, #ffffff 42.84%, #ffffff 57.12%, #fbbf24 57.12%, #fbbf24 71.4%, #dc2626 71.4%, #dc2626 85.68%, #4a4a4a 85.68%, #4a4a4a 100%)">
   
-  const audioContextRef = useRef(null);
-  const spinSoundRef = useRef(null);
-
-  useEffect(() => {
-    audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-  }, []);
-
-  const playSpinSound = () => {
-    if (!soundEnabled || !audioContextRef.current) return;
-    
-    const ctx = audioContextRef.current;
-    
-    // Créer un cliquetis répétitif
-    const playClick = (time) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(1200, time);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      
-      gain.gain.setValueAtTime(0.15, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.02);
-      
-      osc.start(time);
-      osc.stop(time + 0.02);
-    };
-    
-    // Jouer des clics répétés pendant 3 secondes
-    const clickInterval = 0.08; // Un clic tous les 80ms
-    const duration = 3;
-    const clickCount = Math.floor(duration / clickInterval);
-    
-    for (let i = 0; i < clickCount; i++) {
-      playClick(ctx.currentTime + i * clickInterval);
-    }
-    
-    spinSoundRef.current = { active: true };
-  };
-
-  const stopSpinSound = () => {
-    if (spinSoundRef.current) {
-      spinSoundRef.current = null;
-    }
-  };
-
-  const playWinSound = () => {
-    if (!soundEnabled || !audioContextRef.current) return;
-    
-    const ctx = audioContextRef.current;
-    const notes = [523.25, 659.25, 783.99, 1046.50];
-    
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.12);
-      gain.gain.setValueAtTime(0.15, ctx.currentTime + i * 0.12);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.3);
-      osc.start(ctx.currentTime + i * 0.12);
-      osc.stop(ctx.currentTime + i * 0.12 + 0.3);
-    });
-  };
-
-  const racines = [
-    { mot: "doxa", display: "doxa", sens: "opinion" },
-    { mot: "kratos", display: "kratos", sens: "pouvoir" },
-    { mot: "logos", display: "logos", sens: "discours" },
-    { mot: "rheo", display: "rhéo", sens: "flux" },
-    { mot: "verbo", display: "verbo", sens: "parole" },
-    { mot: "ego", display: "égo", sens: "moi" },
-    { mot: "sopho", display: "sopho", sens: "sagesse" },
-    { mot: "obscuro", display: "obscuro", sens: "ombre" },
-    { mot: "plecto", display: "plecto", sens: "emmêlement" },
-    { mot: "vexo", display: "vexo", sens: "indignation" },
-    { mot: "excluso", display: "excluso", sens: "exclusion" },
-    { mot: "histrio", display: "histrio", sens: "comédie" },
-    { mot: "clapo", display: "clapo", sens: "bruit" },
-    { mot: "bubulo", display: "bubulo", sens: "futilité" },
-    { mot: "blabla", display: "blabla", sens: "bavardage" },
-    { mot: "glouglou", display: "glouglou", sens: "gargouillis" },
-    { mot: "pifpaf", display: "pifpaf", sens: "impulsion" },
-    { mot: "gribouillo", display: "gribouillo", sens: "griffonnage" },
-    { mot: "babilo", display: "babilo", sens: "babillage" },
-    { mot: "farfelo", display: "farfélo", sens: "extravagance" },
-    { mot: "tartuffo", display: "tartuffo", sens: "hypocrisie" },
-    { mot: "grincho", display: "grincho", sens: "râlerie" },
-    { mot: "tartignolo", display: "tartignolo", sens: "prétention" },
-    { mot: "rocambolo", display: "rocambolo", sens: "démesure" },
-    { mot: "chafouino", display: "chafouino", sens: "ruse" },
-    { mot: "pifometro", display: "pifométro", sens: "approximation" },
-    { mot: "barbouillo", display: "barbouillo", sens: "brouillage" },
-    { mot: "auto", display: "auto", sens: "soi-même" },
-    { mot: "praxo", display: "praxo", sens: "action" },
-    { mot: "creno", display: "créno", sens: "juron" },
-    { mot: "crepusculo", display: "crépusculo", sens: "crépuscule" },
-    { mot: "filigrano", display: "filigrano", sens: "détail" },
-    { mot: "pataque", display: "pataqué", sens: "confusion" },
-    { mot: "pseudo", display: "pseudo", sens: "faux" },
-    { mot: "megalo", display: "mégalo", sens: "grand" },
-    { mot: "crypto", display: "crypto", sens: "caché" },
-    { mot: "chrono", display: "chrono", sens: "temps" },
-    { mot: "spectato", display: "spectato", sens: "spectacle" },
-    { mot: "inergo", display: "inergo", sens: "inertie" },
-    { mot: "competo", display: "competo", sens: "compétition" },
-    { mot: "collecto", display: "collecto", sens: "collection" },
-    { mot: "conformo", display: "conformo", sens: "conformité" },
-    { mot: "rigido", display: "rigido", sens: "rigidité" },
-    { mot: "flatto", display: "flatto", sens: "flatterie" },
-    { mot: "morbido", display: "morbido", sens: "morbide" },
-    { mot: "vantardo", display: "vantardo", sens: "vantardise" },
-    { mot: "arroganto", display: "arroganto", sens: "arrogance" },
-    { mot: "lamento", display: "lamento", sens: "lamentation" },
-    { mot: "accuso", display: "accuso", sens: "accusation" },
-    { mot: "caqueto", display: "caqueto", sens: "caquetage" },
-    { mot: "tictaco", display: "tictaco", sens: "répétition" }
-  ];
-
-  const suffixes = [
-    { suffix: "phile", sens: "aime" },
-    { suffix: "phobe", sens: "déteste" },
-    { suffix: "mane", sens: "obsédé" },
-    { suffix: "crate", sens: "gouverne" },
-    { suffix: "phore", sens: "porte" },
-    { suffix: "logue", sens: "parle de" },
-    { suffix: "ard", sens: "caractérisé" },
-    { suffix: "iste", sens: "pratique" },
-    { suffix: "esque", sens: "à la manière" },
-    { suffix: "issime", sens: "très" },
-    { suffix: "atre", sens: "péjoratif" },
-    { suffix: "eux", sens: "plein de" }
-  ];
-
-  const exemplesDefinitions = {
-    "doxomane": "obsédé par l'opinion d'autrui ou par les sondages",
-    "egotreme": "égocentrique béant, vide mais bruyant",
-    "sofocrate": "se croit sage et impose ses idées",
-    "fumigophore": "qui crée la confusion, brouille les esprits",
-    "logorrhephore": "débiteur de flots de paroles inutiles",
-    "histrioncule": "petit acteur prétentieux, dramatique",
-    "bubulophile": "passionné de choses insignifiantes",
-    "tartignolard": "ridicule prétentieux, fanfaron",
-    "pifometreur": "qui juge tout à vue de nez",
-    "verboplecte": "s'emmêle dans ses propres mots",
-    "nodocephale": "tête de nœud, obstiné confus",
-    "gribouillomancien": "obsédé par griffonner inutilement",
-    "rocambolophobe": "critique les extravagances des autres",
-    "vexibond": "s'indigne pour un rien, excessif",
-    "clapoculiste": "bavard maladroit, fait du bruit inutilement",
-    "autopraxique": "agit toujours seul, incapable de coopérer"
-  };
-
-  const raccorderRacines = (racine1, racine2) => {
-    let r1 = racine1.mot;
-    let r2 = racine2.mot;
-    let d1 = racine1.display;
-    let d2 = racine2.display;
-    
-    // Cas spécial : logos en racine2 → devient logo
-    if (r2 === 'logos') {
-      r2 = 'logo';
-      d2 = 'logo';
-    }
-    
-    // Cas spécial : kratos en racine2 → devient krato
-    if (r2 === 'kratos') {
-      r2 = 'krato';
-      d2 = 'krato';
-    }
-    
-    // Si racine1 finit par 'o' et racine2 commence par voyelle, enlever le 'o'
-    if (r1.endsWith('o') && /^[aeiouy]/.test(r2)) {
-      return {
-        mot: r1.slice(0, -1) + r2,
-        display: d1.slice(0, -1) + d2
-      };
-    }
-    
-    // Si même voyelle en fin/début, n'en garder qu'une
-    const lastChar = r1.slice(-1);
-    const firstChar = r2[0];
-    if (lastChar === firstChar && /[aeiouy]/.test(lastChar)) {
-      return {
-        mot: r1 + r2.slice(1),
-        display: d1 + d2.slice(1)
-      };
-    }
-    
-    return {
-      mot: r1 + r2,
-      display: d1 + d2
-    };
-  };
-
-  const ajouterSuffixe = (racineOuCombinaison, suffixe) => {
-    let motBase = racineOuCombinaison.mot;
-    let displayBase = racineOuCombinaison.display;
-    let suffixStr = suffixe.suffix;
-    
-    // Cas spécial : kratos en position finale + suffixe → devient krato + suffixe
-    if (motBase.endsWith('kratos')) {
-      motBase = motBase.slice(0, -1); // enlever le 's'
-      displayBase = displayBase.slice(0, -1);
-    }
-    
-    // Cas spécial : racine finit par 'o' + suffixe 'iste' → ajouter 'ï'
-    if (motBase.endsWith('o') && suffixStr === 'iste') {
-      return {
-        mot: motBase + 'iste',
-        display: displayBase + 'ïste'
-      };
-    }
-    
-    // Cas spécial : racine finit par 'a' + suffixe 'ard' ou 'atre' → enlever un 'a'
-    if (motBase.endsWith('a') && (suffixStr === 'ard' || suffixStr === 'atre')) {
-      return {
-        mot: motBase.slice(0, -1) + suffixStr,
-        display: displayBase.slice(0, -1) + (suffixStr === 'atre' ? 'âtre' : 'ard')
-      };
-    }
-    
-    // Cas spécial : suffixe 'atre' → afficher avec accent 'âtre'
-    if (suffixStr === 'atre') {
-      return {
-        mot: motBase + 'atre',
-        display: displayBase + 'âtre'
-      };
-    }
-    
-    // Racine finit par 'o' + suffixe commence par voyelle (sauf 'iste') → enlever 'o'
-    if (motBase.endsWith('o') && /^[aeiouy]/.test(suffixStr) && suffixStr !== 'iste') {
-      return {
-        mot: motBase.slice(0, -1) + suffixStr,
-        display: displayBase.slice(0, -1) + suffixStr
-      };
-    }
-    
-    // Racine finit par 's' + suffixe commence par 's' → n'en garder qu'un
-    if (motBase.endsWith('s') && suffixStr.startsWith('s')) {
-      return {
-        mot: motBase + suffixStr.slice(1),
-        display: displayBase + suffixStr.slice(1)
-      };
-    }
-    
-    return {
-      mot: motBase + suffixStr,
-      display: displayBase + suffixStr
-    };
-  };
-
-  const spinReels = () => {
-    if (spinning) return;
-    
-    setSpinning(true);
-    setResult(null);
-    playSpinSound();
-
-    const spinDuration = 3000;
-    const scrollSpeed = 30;
-    
-    let animationFrame;
-    const startTime = Date.now();
-    
-    const animate = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / spinDuration, 1);
-      
-      setReelOffsets([
-        (elapsed * scrollSpeed * (1 - progress * 0.9)) % 1000,
-        (elapsed * scrollSpeed * (1 - progress * 0.95)) % 1000,
-        (elapsed * scrollSpeed * (1 - progress * 0.98)) % 1000
-      ]);
-      
-      if (progress < 1) {
-        animationFrame = requestAnimationFrame(animate);
-      } else {
-        setReelOffsets([0, 0, 0]);
-        stopSpinSound();
-        generateFinalResult();
-      }
-    };
-    
-    animationFrame = requestAnimationFrame(animate);
-  };
-
-  const generateFinalResult = () => {
-    let racine1, racine2, suffixe;
-    
-    if (modeManuel) {
-      // Mode manuel : utiliser les sélections
-      racine1 = racine1Selectionnee || racines[Math.floor(Math.random() * racines.length)];
-      racine2 = racine2Selectionnee;
-      suffixe = suffixeSelectionne || suffixes[Math.floor(Math.random() * suffixes.length)];
-    } else {
-      // Mode aléatoire
-      const useDouble = Math.random() > 0.5;
-      racine1 = racines[Math.floor(Math.random() * racines.length)];
-      racine2 = useDouble ? racines[Math.floor(Math.random() * racines.length)] : null;
-      suffixe = suffixes[Math.floor(Math.random() * suffixes.length)];
-    }
-
-    let motFinal, motDisplay, composition;
-
-    if (racine2 && racine2.mot !== racine1.mot) {
-      const racinesCombinees = raccorderRacines(racine1, racine2);
-      const avecSuffixe = ajouterSuffixe(racinesCombinees, suffixe);
-      
-      motFinal = avecSuffixe.mot;
-      motDisplay = avecSuffixe.display;
-      composition = `${racine1.display} (${racine1.sens}) + ${racine2.display} (${racine2.sens}) + -${suffixe.suffix} (${suffixe.sens})`;
-    } else {
-      const avecSuffixe = ajouterSuffixe(racine1, suffixe);
-      motFinal = avecSuffixe.mot;
-      motDisplay = avecSuffixe.display;
-      composition = `${racine1.display} (${racine1.sens}) + -${suffixe.suffix} (${suffixe.sens})`;
-    }
-
-    // Chercher un exemple de définition si disponible
-    const exempleKey = motFinal.toLowerCase();
-    const exemple = exemplesDefinitions[exempleKey];
-
-    const nouveau = { mot: motDisplay, composition, exemple };
-    setResult(nouveau);
-    setHistory(prev => [nouveau, ...prev].slice(0, 10));
-    setSpinning(false);
-    playWinSound();
-  };
-
-  const ReelColumn = ({ items, offset }) => {
-    const itemHeight = 100;
-    const totalHeight = items.length * itemHeight;
-    
-    return (
-      <div className="relative h-32 overflow-hidden bg-gradient-to-b from-gray-100 to-white rounded-lg shadow-inner">
-        {!spinning && offset === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-            <Star className="text-yellow-400 animate-pulse" size={48} fill="currentColor" />
-          </div>
-        )}
-        <div 
-          className="absolute w-full"
-          style={{ 
-            transform: `translateY(-${offset % totalHeight}px)`,
-            transition: spinning ? 'none' : 'transform 0.3s ease-out'
-          }}
-        >
-          {[...items, ...items, ...items].map((item, idx) => (
-            <div 
-              key={idx} 
-              className="flex flex-col items-center justify-center border-b border-gray-200"
-              style={{ height: `${itemHeight}px` }}
-            >
-              <div className="text-3xl font-bold text-purple-600">
-                {item.display || `-${item.suffix}`}
-              </div>
-              <div className="text-xs text-gray-500">
-                {item.sens}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="absolute inset-0 pointer-events-none border-2 border-yellow-400 rounded-lg" 
-             style={{ 
-               boxShadow: 'inset 0 0 20px rgba(251, 191, 36, 0.3)',
-               top: '50%',
-               transform: 'translateY(-50%)',
-               height: '100px'
-             }}
-        />
-      </div>
-    );
-  };
-
-  return (
-    <div className="min-h-screen p-6" style={{
-      background: 'linear-gradient(135deg, #4a4a4a 0%, #4a4a4a 14.28%, #22c55e 14.28%, #22c55e 28.56%, #3b82f6 28.56%, #3b82f6 42.84%, #ffffff 42.84%, #ffffff 57.12%, #fbbf24 57.12%, #fbbf24 71.4%, #dc2626 71.4%, #dc2626 85.68%, #4a4a4a 85.68%, #4a4a4a 100%)'
-    }}>
-      <div className="max-w-5xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 mb-6">
-          <div className="flex justify-between items-start mb-4">
-            <h1 className="text-4xl font-bold text-gray-800">
-              Machine à Néologismes
-            </h1>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setModeManuel(!modeManuel);
-                  setRacine1Selectionnee(null);
-                  setRacine2Selectionnee(null);
-                  setSuffixeSelectionne(null);
-                }}
-                className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                  modeManuel 
-                    ? 'bg-purple-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-                aria-label={modeManuel ? "Mode manuel activé" : "Activer le mode manuel"}
-              >
-                {modeManuel ? 'Mode Manuel' : 'Mode Auto'}
-              </button>
-              <button
-                onClick={() => setSoundEnabled(!soundEnabled)}
-                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
-                aria-label={soundEnabled ? "Désactiver le son" : "Activer le son"}
-              >
-                {soundEnabled ? 
-                  <Volume2 className="text-purple-600" size={24} /> : 
-                  <VolumeX className="text-gray-400" size={24} />
-                }
-              </button>
-            </div>
-          </div>
-          
-          <p className="text-gray-600 mb-8">
-            {modeManuel 
-              ? "Choisissez vos racines et suffixe ci-dessous, puis lancez !" 
-              : "Trois roulettes pour créer des mots satiriques. Lancez et découvrez !"}
-          </p>
-
-          {modeManuel && (
-            <div className="bg-purple-50 rounded-xl p-6 mb-6 border border-purple-200">
-              <h3 className="font-bold text-purple-900 mb-4">Sélection manuelle</h3>
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-semibold text-purple-900 mb-2">Racine 1</label>
-                  <select
-                    value={racine1Selectionnee?.mot || ''}
-                    onChange={(e) => setRacine1Selectionnee(racines.find(r => r.mot === e.target.value))}
-                    className="w-full p-2 border border-purple-300 rounded-lg bg-white"
-                  >
-                    <option value="">Aléatoire</option>
-                    {racines.map(r => (
-                      <option key={r.mot} value={r.mot}>{r.display} ({r.sens})</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-purple-900 mb-2">Racine 2 (optionnel)</label>
-                  <select
-                    value={racine2Selectionnee?.mot || ''}
-                    onChange={(e) => setRacine2Selectionnee(e.target.value ? racines.find(r => r.mot === e.target.value) : null)}
-                    className="w-full p-2 border border-purple-300 rounded-lg bg-white"
-                  >
-                    <option value="">Aucune</option>
-                    {racines.map(r => (
-                      <option key={r.mot} value={r.mot}>{r.display} ({r.sens})</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-purple-900 mb-2">Suffixe</label>
-                  <select
-                    value={suffixeSelectionne?.suffix || ''}
-                    onChange={(e) => setSuffixeSelectionne(suffixes.find(s => s.suffix === e.target.value))}
-                    className="w-full p-2 border border-purple-300 rounded-lg bg-white"
-                  >
-                    <option value="">Aléatoire</option>
-                    {suffixes.map(s => (
-                      <option key={s.suffix} value={s.suffix}>-{s.suffix} ({s.sens})</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-xl p-6">
-              <h3 className="text-white text-center font-bold mb-4">Racine 1</h3>
-              <ReelColumn items={racines} offset={reelOffsets[0]} />
-            </div>
-
-            <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-xl p-6">
-              <h3 className="text-white text-center font-bold mb-4">Racine 2</h3>
-              <ReelColumn items={racines} offset={reelOffsets[1]} />
-            </div>
-
-            <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-xl p-6">
-              <h3 className="text-white text-center font-bold mb-4">Suffixe</h3>
-              <ReelColumn items={suffixes} offset={reelOffsets[2]} />
-            </div>
-          </div>
-
-          <button
-            onClick={spinReels}
-            disabled={spinning}
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-4 px-6 rounded-xl hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg flex items-center justify-center gap-3 text-lg"
-            aria-label="Lancer les roulettes pour générer un néologisme"
-          >
-            {spinning ? <RotateCw className="animate-spin" size={24} /> : <Play size={24} />}
-            {spinning ? 'Roulettes en rotation...' : 'Lancer les roulettes'}
+  <div class="max-w-5xl mx-auto">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 mb-6">
+      <div class="flex justify-between items-start mb-4">
+        <h1 class="text-4xl font-bold text-gray-800">Machine à Néologismes</h1>
+        <div class="flex gap-2">
+          <button id="btnMode" class="px-4 py-2 rounded-lg font-semibold transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">Mode Auto</button>
+          <button id="btnSound" class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
+            <svg id="iconSound" class="text-purple-600" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
           </button>
         </div>
-
-        {result && (
-          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6 border-l-8 border-yellow-400 animate-pulse" style={{ animationDuration: '0.5s', animationIterationCount: '2' }}>
-            <div className="mb-6">
-              <span className="text-sm font-semibold text-yellow-600 uppercase tracking-wide">
-                Mot généré
-              </span>
-              <h2 className="text-5xl font-bold text-gray-900 mt-2">
-                {result.mot}
-              </h2>
-            </div>
-            
-            <div className="space-y-6">
-              <div>
-                <h3 className="font-bold text-gray-900 text-lg mb-2">Composition</h3>
-                <p className="text-gray-700 bg-purple-50 p-4 rounded-lg text-sm">
-                  {result.composition}
-                </p>
-              </div>
-              
-              {result.exemple && (
-                <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg">
-                  <h3 className="font-bold text-green-900 text-sm mb-2">Exemple de définition</h3>
-                  <p className="text-green-800 italic">{result.exemple}</p>
-                </div>
-              )}
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-blue-900 text-sm">
-                  À vous d'imaginer la définition satirique en combinant les sens des racines !
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {history.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <h3 className="text-2xl font-bold text-gray-800 mb-6">Historique</h3>
-            <div className="space-y-4">
-              {history.map((item, idx) => (
-                <div key={idx} className="border-l-4 border-purple-300 pl-5 py-3 hover:border-purple-600 transition-colors bg-gray-50 rounded-r-lg">
-                  <p className="font-bold text-xl text-gray-900 mb-1">{item.mot}</p>
-                  <p className="text-sm text-gray-500 mb-2">{item.composition}</p>
-                  {item.exemple && (
-                    <p className="text-xs text-green-700 italic bg-green-50 p-2 rounded mt-2">
-                      Exemple : {item.exemple}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
-    </div>
-  );
-};
+      
+      <p id="desc" class="text-gray-600 mb-8">Trois roulettes pour créer des mots satiriques. Lancez et découvrez !</p>
 
-export default NeologismSlotMachine;
+      <div id="panelManuel" class="bg-purple-50 rounded-xl p-6 mb-6 border border-purple-200 hidden">
+        <h3 class="font-bold text-purple-900 mb-4">Sélection manuelle</h3>
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-purple-900 mb-2">Racine 1</label>
+            <select id="sel1" class="w-full p-2 border border-purple-300 rounded-lg bg-white"><option value="">Aléatoire</option></select>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-purple-900 mb-2">Racine 2 (optionnel)</label>
+            <select id="sel2" class="w-full p-2 border border-purple-300 rounded-lg bg-white"><option value="">Aucune</option></select>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-purple-900 mb-2">Suffixe</label>
+            <select id="sel3" class="w-full p-2 border border-purple-300 rounded-lg bg-white"><option value="">Aléatoire</option></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-4 mb-8">
+        <div class="bg-gradient-to-b from-gray-800 to-gray-900 rounded-xl p-6">
+          <h3 class="text-white text-center font-bold mb-4">Racine 1</h3>
+          <div class="relative h-32 overflow-hidden bg-gradient-to-b from-gray-100 to-white rounded-lg shadow-inner">
+            <div id="reel1" class="absolute w-full"></div>
+            <div class="absolute inset-0 pointer-events-none border-2 border-yellow-400 rounded-lg" style="box-shadow: inset 0 0 20px rgba(251, 191, 36, 0.3); top: 50%; transform: translateY(-50%); height: 100px"></div>
+          </div>
+        </div>
+        <div class="bg-gradient-to-b from-gray-800 to-gray-900 rounded-xl p-6">
+          <h3 class="text-white text-center font-bold mb-4">Racine 2</h3>
+          <div class="relative h-32 overflow-hidden bg-gradient-to-b from-gray-100 to-white rounded-lg shadow-inner">
+            <div id="reel2" class="absolute w-full"></div>
+            <div class="absolute inset-0 pointer-events-none border-2 border-yellow-400 rounded-lg" style="box-shadow: inset 0 0 20px rgba(251, 191, 36, 0.3); top: 50%; transform: translateY(-50%); height: 100px"></div>
+          </div>
+        </div>
+        <div class="bg-gradient-to-b from-gray-800 to-gray-900 rounded-xl p-6">
+          <h3 class="text-white text-center font-bold mb-4">Suffixe</h3>
+          <div class="relative h-32 overflow-hidden bg-gradient-to-b from-gray-100 to-white rounded-lg shadow-inner">
+            <div id="reel3" class="absolute w-full"></div>
+            <div class="absolute inset-0 pointer-events-none border-2 border-yellow-400 rounded-lg" style="box-shadow: inset 0 0 20px rgba(251, 191, 36, 0.3); top: 50%; transform: translateY(-50%); height: 100px"></div>
+          </div>
+        </div>
+      </div>
+
+      <button id="btnSpin" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-4 px-6 rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg text-lg">
+        <span id="btnText">▶ Lancer les roulettes</span>
+      </button>
+    </div>
+
+    <div id="result" class="bg-white rounded-2xl shadow-xl p-8 mb-6 border-l-8 border-yellow-400 hidden"></div>
+    <div id="history" class="bg-white rounded-2xl shadow-xl p-8 hidden">
+      <h3 class="text-2xl font-bold text-gray-800 mb-6">Historique</h3>
+      <div id="historyList" class="space-y-4"></div>
+    </div>
+  </div>
+
+  <script>
+const racines=[{mot:"doxa",display:"doxa",sens:"opinion"},{mot:"kratos",display:"kratos",sens:"pouvoir"},{mot:"logos",display:"logos",sens:"discours"},{mot:"rheo",display:"rhéo",sens:"flux"},{mot:"verbo",display:"verbo",sens:"parole"},{mot:"ego",display:"égo",sens:"moi"},{mot:"sopho",display:"sopho",sens:"sagesse"},{mot:"obscuro",display:"obscuro",sens:"ombre"},{mot:"plecto",display:"plecto",sens:"emmêlement"},{mot:"vexo",display:"vexo",sens:"indignation"},{mot:"excluso",display:"excluso",sens:"exclusion"},{mot:"histrio",display:"histrio",sens:"comédie"},{mot:"clapo",display:"clapo",sens:"bruit"},{mot:"bubulo",display:"bubulo",sens:"futilité"},{mot:"blabla",display:"blabla",sens:"bavardage"},{mot:"glouglou",display:"glouglou",sens:"gargouillis"},{mot:"pifpaf",display:"pifpaf",sens:"impulsion"},{mot:"gribouillo",display:"gribouillo",sens:"griffonnage"},{mot:"babilo",display:"babilo",sens:"babillage"},{mot:"farfelo",display:"farfélo",sens:"extravagance"},{mot:"tartuffo",display:"tartuffo",sens:"hypocrisie"},{mot:"grincho",display:"grincho",sens:"râlerie"},{mot:"tartignolo",display:"tartignolo",sens:"prétention"},{mot:"rocambolo",display:"rocambolo",sens:"démesure"},{mot:"chafouino",display:"chafouino",sens:"ruse"},{mot:"pifometro",display:"pifométro",sens:"approximation"},{mot:"barbouillo",display:"barbouillo",sens:"brouillage"},{mot:"auto",display:"auto",sens:"soi-même"},{mot:"praxo",display:"praxo",sens:"action"},{mot:"creno",display:"créno",sens:"juron"},{mot:"crepusculo",display:"crépusculo",sens:"crépuscule"},{mot:"filigrano",display:"filigrano",sens:"détail"},{mot:"pataque",display:"pataqué",sens:"confusion"},{mot:"pseudo",display:"pseudo",sens:"faux"},{mot:"megalo",display:"mégalo",sens:"grand"},{mot:"crypto",display:"crypto",sens:"caché"},{mot:"chrono",display:"chrono",sens:"temps"},{mot:"spectato",display:"spectato",sens:"spectacle"},{mot:"inergo",display:"inergo",sens:"inertie"},{mot:"competo",display:"competo",sens:"compétition"},{mot:"collecto",display:"collecto",sens:"collection"},{mot:"conformo",display:"conformo",sens:"conformité"},{mot:"rigido",display:"rigido",sens:"rigidité"},{mot:"flatto",display:"flatto",sens:"flatterie"},{mot:"morbido",display:"morbido",sens:"morbide"},{mot:"vantardo",display:"vantardo",sens:"vantardise"},{mot:"arroganto",display:"arroganto",sens:"arrogance"},{mot:"lamento",display:"lamento",sens:"lamentation"},{mot:"accuso",display:"accuso",sens:"accusation"},{mot:"caqueto",display:"caqueto",sens:"caquetage"},{mot:"tictaco",display:"tictaco",sens:"répétition"}];
+const suffixes=[{suffix:"phile",sens:"aime"},{suffix:"phobe",sens:"déteste"},{suffix:"mane",sens:"obsédé"},{suffix:"crate",sens:"gouverne"},{suffix:"phore",sens:"porte"},{suffix:"logue",sens:"parle de"},{suffix:"ard",sens:"caractérisé"},{suffix:"iste",sens:"pratique"},{suffix:"esque",sens:"à la manière"},{suffix:"issime",sens:"très"},{suffix:"atre",sens:"péjoratif"},{suffix:"eux",sens:"plein de"}];
+const exemples={doxomane:"obsédé par l'opinion d'autrui ou par les sondages",egotreme:"égocentrique béant, vide mais bruyant",sofocrate:"se croit sage et impose ses idées",fumigophore:"qui crée la confusion, brouille les esprits",logorrhephore:"débiteur de flots de paroles inutiles",histrioncule:"petit acteur prétentieux, dramatique",bubulophile:"passionné de choses insignifiantes",tartignolard:"ridicule prétentieux, fanfaron",pifometreur:"qui juge tout à vue de nez",verboplecte:"s'emmêle dans ses propres mots",nodocephale:"tête de nœud, obstiné confus",gribouillomancien:"obsédé par griffonner inutilement",rocambolophobe:"critique les extravagances des autres",vexibond:"s'indigne pour un rien, excessif",clapoculiste:"bavard maladroit, fait du bruit inutilement",autopraxique:"agit toujours seul, incapable de coopérer"};
+
+let spinning=false,soundOn=true,manuel=false,hist=[],ctx;
+
+document.addEventListener('DOMContentLoaded',()=>{
+  ctx=new(window.AudioContext||window.webkitAudioContext)();
+  initReels();
+  populateSelects();
+  document.getElementById('btnSpin').onclick=spin;
+  document.getElementById('btnSound').onclick=toggleSound;
+  document.getElementById('btnMode').onclick=toggleMode;
+});
+
+function initReels(){
+  ['reel1','reel2','reel3'].forEach((id,i)=>{
+    const items=i<2?racines:suffixes;
+    const html=[...items,...items,...items].map(it=>`<div class="flex flex-col items-center justify-center border-b border-gray-200" style="height:100px"><div class="text-3xl font-bold text-purple-600">${it.display||'-'+it.suffix}</div><div class="text-xs text-gray-500">${it.sens}</div></div>`).join('');
+    document.getElementById(id).innerHTML=html;
+  });
+}
+
+function populateSelects(){
+  racines.forEach(r=>{
+    sel1.innerHTML+=`<option value="${r.mot}">${r.display} (${r.sens})</option>`;
+    sel2.innerHTML+=`<option value="${r.mot}">${r.display} (${r.sens})</option>`;
+  });
+  suffixes.forEach(s=>sel3.innerHTML+=`<option value="${s.suffix}">-${s.suffix} (${s.sens})</option>`);
+}
+
+function toggleMode(){
+  manuel=!manuel;
+  const btn=document.getElementById('btnMode'),panel=document.getElementById('panelManuel'),desc=document.getElementById('desc');
+  if(manuel){
+    btn.textContent='Mode Manuel';
+    btn.className='px-4 py-2 rounded-lg font-semibold transition-colors bg-purple-600 text-white';
+    panel.classList.remove('hidden');
+    desc.textContent='Choisissez vos racines et suffixe ci-dessous, puis lancez !';
+  }else{
+    btn.textContent='Mode Auto';
+    btn.className='px-4 py-2 rounded-lg font-semibold transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200';
+    panel.classList.add('hidden');
+    desc.textContent='Trois roulettes pour créer des mots satiriques. Lancez et découvrez !';
+    sel1.value=sel2.value=sel3.value='';
+  }
+}
+
+function toggleSound(){
+  soundOn=!soundOn;
+  const icon=document.getElementById('iconSound');
+  if(soundOn){
+    icon.innerHTML='<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>';
+    icon.classList.add('text-purple-600');icon.classList.remove('text-gray-400');
+  }else{
+    icon.innerHTML='<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>';
+    icon.classList.remove('text-purple-600');icon.classList.add('text-gray-400');
+  }
+}
+
+function playClick(time){
+  if(!soundOn||!ctx)return;
+  const o=ctx.createOscillator(),g=ctx.createGain();
+  o.type='square';o.frequency.setValueAtTime(1200,time);o.connect(g);g.connect(ctx.destination);
+  g.gain.setValueAtTime(0.15,time);g.gain.exponentialRampToValueAtTime(0.001,time+0.02);
+  o.start(time);o.stop(time+0.02);
+}
+
+function playWin(){
+  if(!soundOn||!ctx)return;
+  [523.25,659.25,783.99,1046.50].forEach((f,i)=>{
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type='sine';o.connect(g);g.connect(ctx.destination);
+    o.frequency.setValueAtTime(f,ctx.currentTime+i*0.12);
+    g.gain.setValueAtTime(0.15,ctx.currentTime+i*0.12);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.12+0.3);
+    o.start(ctx.currentTime+i*0.12);o.stop(ctx.currentTime+i*0.12+0.3);
+  });
+}
+
+function spin(){
+  if(spinning)return;
+  spinning=true;
+  document.getElementById('btnText').innerHTML='⟳ Roulettes en rotation...';
+  document.getElementById('btnSpin').disabled=true;
+  document.getElementById('btnSpin').classList.add('opacity-50','cursor-not-allowed');
+  
+  for(let i=0;i<38;i++)playClick(ctx.currentTime+i*0.08);
+  
+  const start=Date.now();
+  function anim(){
+    const e=Date.now()-start,p=Math.min(e/3000,1);
+    const o1=(e*30*(1-p*0.9))%1000,o2=(e*30*(1-p*0.95))%1000,o3=(e*30*(1-p*0.98))%1000;
+    reel1.style.transform=`translateY(-${o1}px)`;
+    reel2.style.transform=`translateY(-${o2}px)`;
+    reel3.style.transform=`translateY(-${o3}px)`;
+    if(p<1)requestAnimationFrame(anim);
+    else{
+      reel1.style.transform=reel2.style.transform=reel3.style.transform='translateY(0)';
+      generate();
+    }
+  }
+  requestAnimationFrame(anim);
+}
+
+function connect(r1,r2){
+  let m1=r1.mot,m2=r2.mot,d1=r1.display,d2=r2.display;
+  if(m2==='logos'){m2='logo';d2='logo';}
+  if(m2==='kratos'){m2='krato';d2='krato';}
+  if(m1.endsWith('o')&&/^[aeiouy]/.test(m2))return{mot:m1.slice(0,-1)+m2,display:d1.slice(0,-1)+d2};
+  const l=m1.slice(-1),f=m2[0];
+  if(l===f&&/[aeiouy]/.test(l))return{mot:m1+m2.slice(1),display:d1+d2.slice(1)};
+  return{mot:m1+m2,display:d1+d2};
+}
+
+function addSuffix(base,suf){
+  let m=base.mot,d=base.display,s=suf.suffix;
+  if(m.endsWith('kratos')){m=m.slice(0,-1);d=d.slice(0,-1);}
+  if(m.endsWith('o')&&s==='iste')return{mot:m+'iste',display:d+'ïste'};
+  if(m.endsWith('a')&&(s==='ard'||s==='atre'))return{mot:m.slice(0,-1)+s,display:d.slice(0,-1)+(s==='atre'?'âtre':'ard')};
+  if(s==='atre')return{mot:m+'atre',display:d+'âtre'};
+  if(m.endsWith('o')&&/^[aeiouy]/.test(s)&&s!=='iste')return{mot:m.slice(0,-1)+s,display:d.slice(0,-1)+s};
+  if(m.endsWith('s')&&s.startsWith('s'))return{mot:m+s.slice(1),display:d+s.slice(1)};
+  return{mot:m+s,display:d+s};
+}
+
+function generate(){
+  let r1,r2,suf;
+  if(manuel){
+    const v1=sel1.value,v2=sel2.value,v3=sel3.value;
+    r1=v1?racines.find(r=>r.mot===v1):racines[Math.floor(Math.random()*racines.length)];
+    r2=v2?racines.find(r=>r.mot===v2):null;
+    suf=v3?suffixes.find(s=>s.suffix===v3):suffixes[Math.floor(Math.random()*suffixes.length)];
+  }else{
+    r1=racines[Math.floor(Math.random()*racines.length)];
+    r2=Math.random()>0.5?racines[Math.floor(Math.random()*racines.length)]:null;
+    suf=suffixes[Math.floor(Math.random()*suffixes.length)];
+  }
+  
+  let final,disp,comp;
+  if(r2&&r2.mot!==r1.mot){
+    const combined=connect(r1,r2);
+    const withSuf=addSuffix(combined,suf);
+    final=withSuf.mot;disp=withSuf.display;
+    comp=`${r1.display} (${r1.sens}) + ${r2.display} (${r2.sens}) + -${suf.suffix} (${suf.sens})`;
+  }else{
+    const withSuf=addSuffix(r1,suf);
+    final=withSuf.mot;disp=withSuf.display;
+    comp=`${r1.display} (${r1.sens}) + -${suf.suffix} (${suf.sens})`;
+  }
+  
+  const ex=exemples[final.toLowerCase()];
+  const res={mot:disp,composition:comp,exemple:ex};
+  
+  const rc=document.getElementById('result');
+  rc.classList.remove('hidden');
+  rc.classList.add('pulse-twice');
+  setTimeout(()=>rc.classList.remove('pulse-twice'),1000);
+  
+  rc.innerHTML=`<div class="mb-6"><span class="text-sm font-semibold text-yellow-600 uppercase tracking-wide">Mot généré</span><h2 class="text-5xl font-bold text-gray-900 mt-2">${res.mot}</h2></div><div class="space-y-6"><div><h3 class="font-bold text-gray-900 text-lg mb-2">Composition</h3><p class="text-gray-700 bg-purple-50 p-4 rounded-lg text-sm">${res.composition}</p></div>${res.exemple?`<div class="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg"><h3 class="font-bold text-green-900 text-sm mb-2">Exemple de définition</h3><p class="text-green-800 italic">${res.exemple}</p></div>`:''}<div class="bg-blue-50 border border-blue-200 rounded-lg p-4"><p class="text-blue-900 text-sm">À vous d'imaginer la définition satirique en combinant les sens des racines !</p></div></div>`;
+  
+  hist.unshift(res);
+  hist=hist.slice(0,10);
+  
+  const hc=document.getElementById('history');
+  const hl=document.getElementById('historyList');
+  hc.classList.remove('hidden');
+  hl.innerHTML=hist.map(h=>`<div class="border-l-4 border-purple-300 pl-5 py-3 hover:border-purple-600 transition-colors bg-gray-50 rounded-r-lg"><p class="font-bold text-xl text-gray-900 mb-1">${h.mot}</p><p class="text-sm text-gray-500 mb-2">${h.composition}</p>${h.exemple?`<p class="text-xs text-green-700 italic bg-green-50 p-2 rounded mt-2">Exemple : ${h.exemple}</p>`:''}</div>`).join('');
+  
+  spinning=false;
+  document.getElementById('btnText').innerHTML='▶ Lancer les roulettes';
+  document.getElementById('btnSpin').disabled=false;
+  document.getElementById('btnSpin').classList.remove('opacity-50','cursor-not-allowed');
+  playWin();
+}
+  </script>
+</body>
+</html>
